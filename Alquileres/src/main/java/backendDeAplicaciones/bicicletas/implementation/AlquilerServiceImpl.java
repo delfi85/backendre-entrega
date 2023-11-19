@@ -1,18 +1,13 @@
 package backendDeAplicaciones.bicicletas.implementation;
 
 import backendDeAplicaciones.bicicletas.controller.response.FinalizacionAlquilerResponse;
-
 import backendDeAplicaciones.bicicletas.entity.Alquiler;
-import backendDeAplicaciones.bicicletas.entity.Estacion;
-import backendDeAplicaciones.bicicletas.entity.Tarifa;
 import backendDeAplicaciones.bicicletas.exceptions.AlquilerNotFoundException;
-import backendDeAplicaciones.bicicletas.exceptions.EstacionNotFoundException;
 import backendDeAplicaciones.bicicletas.exceptions.MonedaNoSoportadaException;
 import backendDeAplicaciones.bicicletas.repositories.AlquilerRepository;
-import backendDeAplicaciones.bicicletas.repositories.EstacionRepository;
 import backendDeAplicaciones.bicicletas.repositories.TarifaRepository;
+import backendDeAplicaciones.bicicletas.response.EstacionDto;
 import backendDeAplicaciones.bicicletas.service.AlquilerService;
-import backendDeAplicaciones.bicicletas.service.UbicacionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -26,26 +21,23 @@ public class AlquilerServiceImpl implements AlquilerService {
 
     private final CurrencyConversionService currencyConversionService;
     private final AlquilerRepository alquilerRepository;
-    private final EstacionRepository estacionRepository;
+    private final EstacionServiceImpl estacionService;
     private final TarifaRepository tarifaRepository;
-    private final UbicacionService ubicacionService;
 
     @Autowired
     public AlquilerServiceImpl(CurrencyConversionService currencyConversionService, AlquilerRepository alquilerRepository,
-                               EstacionRepository estacionRepository,
-                               TarifaRepository tarifaRespository,
-                               UbicacionService ubicacionService) {
+                               EstacionServiceImpl estacionService,
+                               TarifaRepository tarifaRespository) {
         this.currencyConversionService = currencyConversionService;
         this.alquilerRepository = alquilerRepository;
-        this.estacionRepository = estacionRepository;
+        this.estacionService = estacionService;
         this.tarifaRepository = tarifaRespository;
-        this.ubicacionService = ubicacionService;
 
     }
 
     @Override
     public Alquiler crearNuevoAlquiler(String idCliente, Long estacionRetiroId) {
-        Estacion estacionRetiro = estacionRepository.findById(estacionRetiroId).orElse(null);
+        EstacionDto estacionRetiro = estacionService.obtenerEstacion(estacionRetiroId);
 
         if (estacionRetiro == null) {
             // Manejar el caso en el que la estación no se encontró
@@ -55,7 +47,7 @@ public class AlquilerServiceImpl implements AlquilerService {
         Alquiler alquiler = new Alquiler();
         alquiler.setIdCliente(idCliente);
         alquiler.setEstado(1L); // Estado 1 - iniciado
-        alquiler.setEstacionRetiro(estacionRetiro);
+        alquiler.setEstacionRetiro(estacionRetiroId);
         alquiler.setFechaHoraRetiro(LocalDateTime.now()); // Fecha y hora actual
 
 //        Tarifa debería ser null al iniciar el alquiler
@@ -72,15 +64,14 @@ public class AlquilerServiceImpl implements AlquilerService {
         Alquiler alquiler = alquilerRepository.findById(idAlquiler).orElseThrow(() ->
                 new AlquilerNotFoundException("No se encontró el alquiler con ID: " + idAlquiler));
 
-       // if (alquiler.getEstado() == 1) {
+        // if (alquiler.getEstado() == 1) {
         //    throw new AlquilerFinalizadoException("El alquiler con ID: " + idAlquiler + " ya ha sido finalizado.");
         //}
 
-        Estacion estacion = estacionRepository.findById(estacionDevolucion).orElseThrow(() ->
-                new EstacionNotFoundException("No se encontró la estación de devolución con ID: " + estacionDevolucion));
+        EstacionDto estacion = estacionService.obtenerEstacion(estacionDevolucion);
 
         alquiler.setEstado(2L);
-        alquiler.setEstacionDevolucion(estacion);
+        alquiler.setEstacionDevolucion(estacionDevolucion);
         alquiler.setFechaHoraDevolucion(LocalDateTime.now());
 
         // Obtén la tarifa aplicable
@@ -119,16 +110,10 @@ public class AlquilerServiceImpl implements AlquilerService {
     public double calcularCostoAlquiler(Alquiler alquiler) {
         Tarifa tarifa = alquiler.getTarifa();
 
-        //empezamos el calculo
+        double costo = tarifa.getMontoFijoAlquiler();
 
-        // Calcula el costo del alquiler.
-        double costo = tarifa.getMontoFijoAlquiler(); // Costo fijo por iniciar el alquiler
-
-        // Calcula el costo de la fracción de minutos antes de la hora completa.
         int minutosFraccion = (int) Duration.between(alquiler.getFechaHoraRetiro(), alquiler.getFechaHoraDevolucion()).toMinutes();
 
-
-        // Calcula el costo de las horas completas.
         int horasCompletas = minutosFraccion / 60;
         costo += tarifa.getMontoHora() * horasCompletas;
 
@@ -140,13 +125,15 @@ public class AlquilerServiceImpl implements AlquilerService {
             costo += tarifa.getMontoHora();
         }
 
-        //calcular la distancia
-        double distanciaKm = ubicacionService.calcularDistancia(alquiler.getEstacionRetiro().getLatitud(),
-                alquiler.getEstacionRetiro().getLongitud(),
-                alquiler.getEstacionDevolucion().getLatitud(),
-                alquiler.getEstacionDevolucion().getLongitud());
+        EstacionDto estacionRetiro = estacionService.obtenerEstacion(alquiler.getEstacionRetiro());
+        EstacionDto estacionDevolucion = estacionService.obtenerEstacion(alquiler.getEstacionDevolucion());
+        double distanciaLat = (estacionRetiro.getLatitud() - estacionDevolucion.getLatitud()) * 110;
+        double distanciaLon = (estacionRetiro.getLongitud() - estacionDevolucion.getLongitud()) * 110;
 
-        costo += tarifa.getMontoKm() * distanciaKm;
+        // Calcula la distancia euclidiana
+        double distancia = Math.sqrt(Math.pow(distanciaLat, 2) + Math.pow(distanciaLon, 2));
+
+        costo += tarifa.getMontoKm() * distancia;
 
         return costo;
     }

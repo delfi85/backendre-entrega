@@ -3,6 +3,7 @@ package backendDeAplicaciones.bicicletas.controller;
 import backendDeAplicaciones.bicicletas.entity.Estacion;
 import backendDeAplicaciones.bicicletas.service.EstacionService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -51,4 +52,16 @@ public class EstacionController {
         return estacionService.getById(id);
     }
 
+    @GetMapping("/estacion-mas-cercana")
+    public ResponseEntity<Estacion> encontrarEstacionMasCercana(
+            @RequestParam("latitud") double latitud,
+            @RequestParam("longitud") double longitud) {
+        Estacion estacionMasCercana = estacionService.encontrarEstacionMasCercana(latitud, longitud);
+
+        if (estacionMasCercana != null) {
+            return ResponseEntity.ok(estacionMasCercana);
+        } else {
+            return ResponseEntity.notFound().build();
+        }
+    }
 }

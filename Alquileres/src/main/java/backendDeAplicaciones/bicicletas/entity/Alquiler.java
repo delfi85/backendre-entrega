@@ -40,9 +40,9 @@ public class Alquiler {
 
     @OneToOne
     @JoinColumn(name = "ESTACION_RETIRO", referencedColumnName = "ID")
-    private Estacion estacionRetiro;
+    private Long estacionRetiro;
 
     @OneToOne
     @JoinColumn(name = "ESTACION_DEVOLUCION", referencedColumnName = "ID")
-    private Estacion estacionDevolucion;
+    private Long estacionDevolucion;
 }

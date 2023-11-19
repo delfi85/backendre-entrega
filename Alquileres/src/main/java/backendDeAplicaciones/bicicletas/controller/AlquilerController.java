@@ -1,6 +1,7 @@
 package backendDeAplicaciones.bicicletas.controller;
 
 import backendDeAplicaciones.bicicletas.controller.response.FinalizacionAlquilerResponse;
+import backendDeAplicaciones.bicicletas.entity.Alquiler;
 import backendDeAplicaciones.bicicletas.service.AlquilerService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;

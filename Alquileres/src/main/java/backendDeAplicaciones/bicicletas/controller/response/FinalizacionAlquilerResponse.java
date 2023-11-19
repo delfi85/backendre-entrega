@@ -1,5 +1,6 @@
 package backendDeAplicaciones.bicicletas.controller.response;
 
+import backendDeAplicaciones.bicicletas.entity.Alquiler;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 

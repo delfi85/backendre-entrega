@@ -23,4 +23,7 @@ public interface EstacionService extends  Service<Estacion, Long> {
 
     List<Estacion> getAll();
 
+    Estacion encontrarEstacionMasCercana(double latitudCliente, double longitudCliente);
+    double calcularDistancia(double lat1, double lon1, double lat2, double lon2);
+
 }
